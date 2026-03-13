@@ -1,27 +1,45 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
 
+	srvConfig "github.com/CHESSComputing/golib/config"
+	"github.com/CHESSComputing/golib/ldap"
 	services "github.com/CHESSComputing/golib/services"
 	"github.com/gin-gonic/gin"
 )
 
-// UserParams represents user-based parameters passed to service
-type UserParams struct {
-	Id   string `form:"id"`
-	Name string `form:"name"`
-}
-
 // GetHandler handles queries via GET requests
 func GetHandler(c *gin.Context) {
-	var params UserParams
-	err := c.Bind(&params)
-	if err != nil {
-		rec := services.Response("ClassID", http.StatusBadRequest, services.BindError, err)
+	var records []ldap.Entry
+
+	name := c.DefaultQuery("name", "")
+	uid := c.DefaultQuery("uid", "")
+	if name == "" && uid == "" {
+		rec := services.Response("ClasseInfoService",
+			http.StatusBadRequest,
+			services.LDAPSearchError,
+			errors.New("no input name or uid parameter"))
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
-	var records []map[string]any
+
+	// make ldap query
+	entry, err := ldapCache.Search(
+		srvConfig.Config.LDAP.Login,
+		srvConfig.Config.LDAP.Password,
+		uid)
+	log.Printf("ldap entry=%+v, err=%v", entry, err)
+	if err != nil {
+		msg := fmt.Sprintf("No LDAP entry, error: %v", err)
+		rec := services.Response("ClasseInfoService", http.StatusBadRequest, services.LDAPSearchError, errors.New(msg))
+		c.JSON(http.StatusBadRequest, rec)
+		return
+	}
+	records = append(records, entry)
+
 	c.JSON(http.StatusOK, records)
 }
