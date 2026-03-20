@@ -18,6 +18,7 @@ func GetHandler(c *gin.Context) {
 	name := c.DefaultQuery("name", "")
 	uid := c.DefaultQuery("uid", "")
 	uidNumber := c.DefaultQuery("uidNumber", "")
+	gidNumber := c.DefaultQuery("gidNumber", "")
 	email := c.DefaultQuery("email", "")
 	if name == "" && uid == "" && uidNumber == "" && email == "" {
 		rec := services.Response("ClasseInfoService",
@@ -29,28 +30,36 @@ func GetHandler(c *gin.Context) {
 	}
 
 	// make ldap query
-	var entry ldap.Entry
 	var err error
+	var record ldap.Entry
 	if uid != "" {
-		entry, err = ldapCache.SearchBy(
+		record, err = ldapCache.SearchBy(
 			srvConfig.Config.LDAP.Login,
 			srvConfig.Config.LDAP.Password,
 			uid, "uid")
+		records = append(records, record)
 	} else if name != "" {
-		entry, err = ldapCache.SearchBy(
+		record, err = ldapCache.SearchBy(
 			srvConfig.Config.LDAP.Login,
 			srvConfig.Config.LDAP.Password,
 			name, "name")
+		records = append(records, record)
 	} else if uidNumber != "" {
-		entry, err = ldapCache.SearchBy(
+		record, err = ldapCache.SearchBy(
 			srvConfig.Config.LDAP.Login,
 			srvConfig.Config.LDAP.Password,
 			uidNumber, "uidNumber")
-	} else if email != "" {
-		entry, err = ldapCache.SearchBy(
+		records = append(records, record)
+	} else if gidNumber != "" {
+		records, err = ldap.Records(
 			srvConfig.Config.LDAP.Login,
 			srvConfig.Config.LDAP.Password,
-			email, "mail")
+			gidNumber, "gidNumber", 0)
+	} else if email != "" {
+		records, err = ldap.Records(
+			srvConfig.Config.LDAP.Login,
+			srvConfig.Config.LDAP.Password,
+			email, "mail", 0)
 	}
 	if err != nil {
 		msg := fmt.Sprintf("No LDAP entry, error: %v", err)
@@ -58,7 +67,5 @@ func GetHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, rec)
 		return
 	}
-	records = append(records, entry)
-
 	c.JSON(http.StatusOK, records)
 }
