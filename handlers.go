@@ -20,7 +20,7 @@ func GetHandler(c *gin.Context) {
 	uidNumber := c.DefaultQuery("uidNumber", "")
 	gidNumber := c.DefaultQuery("gidNumber", "")
 	email := c.DefaultQuery("email", "")
-	if name == "" && uid == "" && uidNumber == "" && email == "" {
+	if name == "" && uid == "" && uidNumber == "" && email == "" && gidNumber == "" {
 		rec := services.Response("ClasseInfoService",
 			http.StatusBadRequest,
 			services.LDAPSearchError,
